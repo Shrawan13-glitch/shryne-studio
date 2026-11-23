@@ -78,7 +78,6 @@ export default function VoicesScreen() {
         data={['All', 'Favorites', ...LANGUAGES]}
         showsHorizontalScrollIndicator={false}
         keyExtractor={(item) => item}
-        estimatedItemSize={84}
         className="mb-3"
         renderItem={({ item }) => (
           <Pressable
@@ -92,7 +91,6 @@ export default function VoicesScreen() {
 
       <FlashList<Voice>
         data={filtered}
-        estimatedItemSize={76}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ paddingBottom: 120 }}
         renderItem={({ item }) => (

@@ -19,6 +19,7 @@ export interface WorkflowRun {
 export interface WorkflowJob {
   id: number;
   run_id: number;
+  run_attempt: number;
   name: string;
   status: WorkflowRun['status'];
   conclusion: WorkflowRun['conclusion'];

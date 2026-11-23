@@ -58,7 +58,6 @@ export function VoicePicker({ visible, selected, onSelect, onClose }: Props) {
               <Text className={`text-xs font-semibold ${language === item ? 'text-white' : 'text-zinc-400'}`}>{item}</Text>
             </Pressable>
           )}
-          estimatedItemSize={80}
           keyExtractor={(item) => item}
           className="mb-3"
           showsHorizontalScrollIndicator={false}
@@ -66,7 +65,6 @@ export function VoicePicker({ visible, selected, onSelect, onClose }: Props) {
 
         <FlashList<Voice>
           data={filtered}
-          estimatedItemSize={68}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <Pressable

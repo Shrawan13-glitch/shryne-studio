@@ -101,7 +101,6 @@ export default function LibraryScreen() {
       ) : (
         <FlashList<AudioAsset>
           data={filtered}
-          estimatedItemSize={92}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingBottom: 120 }}
           renderItem={({ item }) => (

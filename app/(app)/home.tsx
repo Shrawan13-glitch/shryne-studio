@@ -79,7 +79,6 @@ export default function HomeScreen() {
       ) : (
         <FlashList
           data={runs.slice(0, 20)}
-          estimatedItemSize={92}
           keyExtractor={(item) => item.id}
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} tintColor="#a78bfa" />}
           renderItem={({ item }) => (
