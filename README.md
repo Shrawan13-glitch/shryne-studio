@@ -37,6 +37,7 @@ The PAT is stored in the device Keychain / Keystore only. It is never written in
 | 20 concurrent jobs (Free) | Shards capped at 16; `max-parallel: 12` in the matrix. |
 | 6-hour job limit | Runs are capped at ~90 minutes of polling. |
 | API rate limits | Exponential backoff using `X-RateLimit-Reset`. |
+| Cache storage (10 GB/repo) | Model + pip caches use stable keys; the `finalize` job deletes all but the 12 newest caches. |
 
 ## Development
 
@@ -59,6 +60,7 @@ No backend is required. All state lives on-device (SQLite + secure storage).
 - `src/lib/storage/` — SQLite schema, filesystem/unzip/export helpers
 - `src/hooks/`, `src/stores/` — React Query + Zustand state
 - `tests/` — Vitest unit tests
+- `src/lib/github/workflow.ts` — installed workflow template (model + pip caching, 12-cache retention)
 - `.github/workflows/` — CI and manual EAS build
 
 ## License

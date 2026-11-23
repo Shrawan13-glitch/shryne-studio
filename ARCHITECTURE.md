@@ -20,7 +20,7 @@ Script (SQLite draft)
 - **Everything derived is pure.** The TTS compiler, sharder, smart-paste parser and WAV joiner have no React Native imports, so they are unit-tested in Node.
 - **Immutable batch snapshot.** `GenerationRun.compiled` stores exactly what was dispatched. Downloads can be re-run days later even if the script draft changed, and ordering is reconstructed from the generated filenames.
 - **Idempotent provisioning.** Repo + workflow installation is safe to run on every connect. Workflow content is rewritten to pick up app updates but stays pinned to the action's `v1` tag.
-- **Cache warm-up.** A dedicated job downloads the 310 MB Kokoro model into `actions/cache` before the matrix fans out, avoiding N parallel cold downloads.
+- **Cache warm-up.** A dedicated job downloads the 310 MB Kokoro model into `actions/cache` before the matrix fans out, avoiding N parallel cold downloads. A pip wheel cache is shared the same way. Keys are stable (immutable model files, pinned `kokoro-onnx==0.5.0`), so runs hit the cache instead of creating duplicates. The `finalize` job lists `/actions/caches`, sorts by `created_at`, and deletes everything after the newest 12; a job-level concurrency group serializes that pruning across concurrent batches.
 - **Backoff + correlation.** Dispatch returns 204, so runs are found by matching `head_commit.message` to the generated batch id; polling backs off and honors rate-limit headers.
 
 ## Failure modes

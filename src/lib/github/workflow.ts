@@ -1,6 +1,17 @@
 export const WORKFLOW_PATH = '.github/workflows/tts-studio.yml';
 export const WORKFLOW_FILE = 'tts-studio.yml';
 
+/**
+ * Workflow installed into the user's public audio repo.
+ *
+ * Caching strategy:
+ *  - immutable Kokoro ONNX model + voices (~310 MB) in actions/cache under a stable key
+ *  - pip wheel cache shared by every shard
+ *  - a final prune step keeps only the 12 most recently created caches in the repo
+ *
+ * Every `${...}` that must survive into the YAML is escaped as `\${...}` because
+ * this file itself is a JavaScript template literal.
+ */
 export const WORKFLOW_YAML = `name: ShryneTTS Studio
 
 on:
@@ -53,6 +64,11 @@ concurrency:
   group: shryne-\${{ inputs.batch_id }}
   cancel-in-progress: false
 
+env:
+  MODEL_CACHE_KEY: kokoro-models-v1
+  PIP_CACHE_KEY: linux-pip-kokoro-0.5.0-soundfile-v1
+  MAX_CACHES: '12'
+
 jobs:
   warm-cache:
     runs-on: ubuntu-latest
@@ -62,7 +78,14 @@ jobs:
         id: model-cache
         with:
           path: ~/.kokoro-tts
-          key: kokoro-models-v1
+          key: \${{ env.MODEL_CACHE_KEY }}
+
+      - name: Restore pip wheel cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: \${{ env.PIP_CACHE_KEY }}
+
       - name: Download model files (cold cache only)
         if: steps.model-cache.outputs.cache-hit != 'true'
         run: |
@@ -137,6 +160,19 @@ jobs:
       matrix: \${{ fromJSON(needs.prepare.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
+
+      # Every shard restores the same immutable model + pip wheel caches warmed above.
+      - name: Restore Kokoro model cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.kokoro-tts
+          key: \${{ env.MODEL_CACHE_KEY }}
+      - name: Restore pip wheel cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: \${{ env.PIP_CACHE_KEY }}
+
       - uses: actions/download-artifact@v4
         with:
           name: tts-shards-\${{ inputs.batch_id }}
@@ -164,6 +200,10 @@ jobs:
     needs: synthesize
     if: always()
     runs-on: ubuntu-latest
+    # Serialize pruning so two concurrent batches cannot delete each other's caches.
+    concurrency:
+      group: shryne-cache-prune
+      cancel-in-progress: false
     steps:
       - name: Write run summary
         run: |
@@ -173,4 +213,26 @@ jobs:
             echo "Shards: \${{ inputs.shards }} (\${{ inputs.strategy }})"
             echo "Synthesis result: \${{ needs.synthesize.result }}"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Keep only the newest \${{ env.MAX_CACHES }} caches
+        env:
+          GH_TOKEN: \${{ github.token }}
+        run: |
+          set -euo pipefail
+          API="https://api.github.com/repos/\${GITHUB_REPOSITORY}/actions/caches"
+          HEADERS=(-H "Authorization: Bearer \${GH_TOKEN}" -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2026-03-10")
+          response=$(curl -fsSL "\${HEADERS[@]}" "\${API}?per_page=100") || { echo "Could not list caches"; exit 0; }
+          stale=$(printf '%s' "$response" | jq -r --argjson max "\${MAX_CACHES}" '.actions_caches // [] | sort_by(.created_at) | reverse | .[$max:][] | .id')
+          if [ -z "$stale" ]; then
+            echo "Cache count is within the limit of \${MAX_CACHES}."
+            exit 0
+          fi
+          while IFS= read -r id; do
+            [ -z "$id" ] && continue
+            if curl -fsS -X DELETE "\${HEADERS[@]}" "\${API}/\${id}"; then
+              echo "Pruned cache \${id}"
+            else
+              echo "Could not prune cache \${id} (may be in use)"
+            fi
+          done <<< "$stale"
 `;
