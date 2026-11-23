@@ -21,7 +21,6 @@ jobs:
     env:
       CI: 'true'
       EXPO_NO_TELEMETRY: '1'
-      KEYSTORE_PATH: ${{ runner.temp }}/shryne-release.jks
 
     steps:
       - name: Checkout
@@ -93,14 +92,14 @@ jobs:
         run: |
           set -euo pipefail
           if [ -n "$KEYSTORE_B64" ]; then
-            printf '%s' "$KEYSTORE_B64" | base64 -d > "$KEYSTORE_PATH"
+            printf '%s' "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/shryne-release.jks"
             echo "STORE_PASS=$STORE_PASSWORD" >> "$GITHUB_ENV"
             echo "KEY_ALIAS=$KEY_ALIAS_NAME" >> "$GITHUB_ENV"
             echo "KEY_PASS=$KEY_PASSWORD_SECRET" >> "$GITHUB_ENV"
             echo "Using keystore from repository secrets"
           else
             keytool -genkeypair -v \
-              -keystore "$KEYSTORE_PATH" \
+              -keystore "$RUNNER_TEMP/shryne-release.jks" \
               -alias shryne-release \
               -keyalg RSA -keysize 2048 -validity 10000 \
               -storepass shryne123 -keypass shryne123 \
@@ -126,7 +125,7 @@ jobs:
           fi
           "$BUILD_TOOLS_DIR/zipalign" -v -p 4 "$UNSIGNED" "$RUNNER_TEMP/aligned.apk"
           "$BUILD_TOOLS_DIR/apksigner" sign \
-            --ks "$KEYSTORE_PATH" \
+            --ks "$RUNNER_TEMP/shryne-release.jks" \
             --ks-pass "pass:$STORE_PASS" \
             --key-pass "pass:$KEY_PASS" \
             --v1-signing-enabled true \
