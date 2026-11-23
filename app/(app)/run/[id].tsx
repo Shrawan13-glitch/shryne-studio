@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
-import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import { Linking, Pressable, Text, View } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { ArrowLeft, CheckCircle2, Download, ExternalLink, Loader2, RefreshCw, Trash2, XCircle } from 'lucide-react-native';
+import { ArrowLeft, CheckCircle2, ExternalLink, Loader2, RefreshCw, XCircle } from 'lucide-react-native';
 import { Screen } from '@/components/ui/Screen';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -10,7 +10,7 @@ import { useAppStore } from '@/stores/useAppStore';
 import { useCancelRun, useDownloadOutputs, useRemoveRun, useRetryShard, useRuns, useRunPoller } from '@/hooks/useRuns';
 import { useAssets } from '@/hooks/useAssets';
 import { isTerminal } from '@/lib/github/types';
-import { POLL_FAST_MS, POLL_SLOW_MS } from '@/constants/app';
+import { POLL_FAST_MS } from '@/constants/app';
 import { relativeTime } from '@/lib/utils/format';
 
 export default function RunScreen() {

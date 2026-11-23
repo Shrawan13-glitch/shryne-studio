@@ -183,7 +183,7 @@ export async function downloadOutputs(config: StudioConfig, run: GenerationRun, 
   return updated;
 }
 
-export async function retryShard(config: StudioConfig, run: GenerationRun, compiled: CompiledScript, shardIndices: number[]): Promise<GenerationRun> {
+export async function retryShard(config: StudioConfig, run: GenerationRun, _compiled: CompiledScript, _shardIndices: number[]): Promise<GenerationRun> {
   if (!run.runId) return run;
   const api = client(config);
   await api.request(`/repos/${config.repo}/actions/runs/${run.runId}/rerun-failed-jobs`, { method: 'POST' });

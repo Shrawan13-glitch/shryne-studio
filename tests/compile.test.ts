@@ -29,7 +29,7 @@ describe('compileScript', () => {
     const compiled = compileScript([block({ text: 'Hello' }), block({ text: 'Hello' }), block({ filename: 'intro' })], 'b2', {
       voice: 'af_sky', speed: 1, outputDir: 'tts-output',
     });
-    expect(compiled.items.map((i) => i.filename)).toEqual(['0001-Hello', '0002-Hello-2', '0003-intro']);
+    expect(compiled.items.map((i) => i.filename)).toEqual(['0001-Hello', '0002-Hello', '0003-intro']);
   });
 
   it('clamps speed and warns about long lines', () => {

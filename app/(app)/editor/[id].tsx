@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { ArrowLeft, Check, Clapperboard, FileInput, ListPlus, Sparkles, Users, Wand2 } from 'lucide-react-native';
+import { ArrowLeft, Check, Clapperboard, ListPlus, Sparkles, Users } from 'lucide-react-native';
 import { Screen } from '@/components/ui/Screen';
 import { Button } from '@/components/ui/Button';
 import { BlockRow } from '@/components/editor/BlockRow';

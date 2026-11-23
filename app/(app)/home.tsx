@@ -2,7 +2,7 @@ import { useEffect, type ReactNode } from 'react';
 import { Pressable, RefreshControl, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
-import { ArrowRight, AudioLines, FileText, Plus, Radio, Layers } from 'lucide-react-native';
+import { ArrowRight, AudioLines, FileText, Radio, Layers } from 'lucide-react-native';
 import { Screen } from '@/components/ui/Screen';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
