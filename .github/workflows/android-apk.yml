@@ -1,0 +1,151 @@
+name: Android Release APK
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Prebuild + assembleRelease
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    env:
+      CI: 'true'
+      EXPO_NO_TELEMETRY: '1'
+      KEYSTORE_PATH: ${{ runner.temp }}/shryne-release.jks
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Restore npm cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('package.json', '.npmrc') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
+
+      - name: Install JS dependencies
+        run: npm install
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK components
+        run: sdkmanager --install "platform-tools" "platforms;android-35" "platforms;android-36" "build-tools;35.0.0" "build-tools;36.0.0" > /dev/null
+
+      # The generated native project is deterministic for a given JS/config state,
+      # so we cache it and skip prebuild entirely on a hit.
+      - name: Restore generated native project
+        id: native-cache
+        uses: actions/cache@v4
+        with:
+          path: android
+          key: ${{ runner.os }}-android-native-${{ hashFiles('package.json', 'app.json', 'babel.config.js', 'metro.config.js', 'tailwind.config.js', 'src/**', 'app/**') }}
+          restore-keys: |
+            ${{ runner.os }}-android-native-
+
+      - name: Expo prebuild (cache miss only)
+        if: steps.native-cache.outputs.cache-hit != 'true'
+        run: npx expo prebuild --platform android --clean
+
+      - name: Configure Gradle memory
+        run: echo -e "\norg.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=768m\norg.gradle.parallel=false" >> android/gradle.properties
+
+      - name: Restore Gradle caches
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            ~/.android/cache
+          key: ${{ runner.os }}-gradle-${{ hashFiles('android/gradle/wrapper/gradle-wrapper.properties', 'android/**/*.gradle', 'android/**/*.gradle.kts', 'package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Prepare signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS_NAME: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD_SECRET: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -n "$KEYSTORE_B64" ]; then
+            printf '%s' "$KEYSTORE_B64" | base64 -d > "$KEYSTORE_PATH"
+            echo "STORE_PASS=$STORE_PASSWORD" >> "$GITHUB_ENV"
+            echo "KEY_ALIAS=$KEY_ALIAS_NAME" >> "$GITHUB_ENV"
+            echo "KEY_PASS=$KEY_PASSWORD_SECRET" >> "$GITHUB_ENV"
+            echo "Using keystore from repository secrets"
+          else
+            keytool -genkeypair -v \
+              -keystore "$KEYSTORE_PATH" \
+              -alias shryne-release \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass shryne123 -keypass shryne123 \
+              -dname "CN=Shryne Studio, OU=Shryne Studio, O=Shryne Studio, L=Internet, S=Internet, C=US" > /dev/null
+            echo "STORE_PASS=shryne123" >> "$GITHUB_ENV"
+            echo "KEY_ALIAS=shryne-release" >> "$GITHUB_ENV"
+            echo "KEY_PASS=shryne123" >> "$GITHUB_ENV"
+            echo "Generated an ephemeral self-signed keystore (set secrets for a permanent one)"
+          fi
+
+      - name: Assemble release APK
+        working-directory: android
+        run: ./gradlew :app:assembleRelease --no-daemon
+
+      - name: Zipalign and sign APK
+        run: |
+          set -euo pipefail
+          BUILD_TOOLS_DIR=$(ls -d "$ANDROID_HOME/build-tools"/* | sort -V | tail -1)
+          UNSIGNED=$(find android/app/build/outputs/apk/release -name '*.apk' | head -1)
+          if [ -z "$UNSIGNED" ]; then
+            echo "No unsigned APK produced" >&2
+            exit 1
+          fi
+          "$BUILD_TOOLS_DIR/zipalign" -v -p 4 "$UNSIGNED" "$RUNNER_TEMP/aligned.apk"
+          "$BUILD_TOOLS_DIR/apksigner" sign \
+            --ks "$KEYSTORE_PATH" \
+            --ks-pass "pass:$STORE_PASS" \
+            --key-pass "pass:$KEY_PASS" \
+            --v1-signing-enabled true \
+            --v2-signing-enabled true \
+            --out shryne-studio-release.apk \
+            "$RUNNER_TEMP/aligned.apk"
+          "$BUILD_TOOLS_DIR/apksigner" verify --verbose shryne-studio-release.apk
+          ls -lh shryne-studio-release.apk
+
+      - name: Upload signed APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: shryne-studio-release-apk
+          path: shryne-studio-release.apk
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Attach APK to GitHub Release (tag pushes)
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${GITHUB_REF_NAME}" shryne-studio-release.apk --generate-notes --title "Shryne Studio ${GITHUB_REF_NAME}"
