@@ -116,6 +116,8 @@ jobs:
 
       - name: Assemble release APK
         working-directory: android
+        env:
+          NODE_ENV: production
         run: ./gradlew :app:assembleRelease --no-daemon
 
       - name: Zipalign and sign APK
