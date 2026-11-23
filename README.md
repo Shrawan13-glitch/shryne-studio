@@ -19,6 +19,26 @@ A production-minded mobile studio for turning scripts into speech using the
 
 `workflow_dispatch` accepts at most **65,535 characters** of inputs. Large scripts cannot fit. Shryne Studio commits the compiled `items` JSON to `<your-account>/shryne-studio-audio/scripts/<batchId>.json`, then dispatches the workflow with only a handful of small inputs. The unique commit message (`tts(batch): <batchId>`) is used to correlate the 204 dispatch response to the resulting run.
 
+
+## Android release APK (Actions only)
+
+Trigger **Android Release APK** from the Actions tab (or push a `v*` tag). The runner:
+
+1. installs JS dependencies,
+2. restores/generates the native `android/` project with `expo prebuild`,
+3. assembles `assembleRelease`,
+4. zipaligns and signs the APK (v1 + v2), then verifies the signature,
+5. uploads `shryne-studio-release-apk` as a workflow artifact (14-day retention),
+6. attaches it to a GitHub Release when triggered by a tag.
+
+No Expo account token is needed. For a permanent signing identity, add repository secrets
+`ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and
+`ANDROID_KEY_PASSWORD`; otherwise an ephemeral self-signed keystore is generated per run.
+
+Caches: npm downloads (`~/.npm`), the generated native project (`android/`), and Gradle
+caches/wrapper (`~/.gradle/**`, `~/.android/cache`). A rebuild with warm caches skips prebuild
+and Gradle dependency resolution.
+
 ## Setup
 
 1. Create a **fine-grained PAT** scoped to the audio repo with `Contents: read/write` and `Actions: read/write`, or a classic PAT with `repo` + `workflow`.
