@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "Shryne Studio",
+    "slug": "shryne-studio",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "scheme": "shryne",
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      ["expo-notifications", { "color": "#8b5cf6" }]
+    ],
+    "experiments": { "typedRoutes": false },
+    "ios": { "supportsTablet": true, "bundleIdentifier": "com.shrynex.studio" },
+    "android": {
+      "package": "com.shrynex.studio",
+      "adaptiveIcon": { "foregroundImage": "./assets/icon.png", "backgroundColor": "#0b0b12" }
+    },
+    "web": { "bundler": "metro", "output": "static" },
+    "extra": { "router": {}, "eas": { "projectId": "00000000-0000-0000-0000-000000000000" } }
+  }
+}
