@@ -48,11 +48,15 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android SDK components
-        run: sdkmanager --install "platform-tools" "platforms;android-35" "platforms;android-36" "build-tools;35.0.0" "build-tools;36.0.0" > /dev/null
+      # ubuntu-latest ships the Android SDK and cmdline-tools already. The
+      # android-actions/setup-android@v3 action is broken on current images
+      # (it tries to install the retired `tools` package), so configure it here.
+      - name: Prepare Android SDK
+        run: |
+          set -euo pipefail
+          SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" -name sdkmanager -type f | sort -V | tail -1)
+          yes | "$SDKMANAGER" --licenses > /dev/null || true
+          "$SDKMANAGER" --install "platform-tools" "platforms;android-35" "platforms;android-36" "build-tools;35.0.0" "build-tools;36.0.0" > /dev/null
 
       # The generated native project is deterministic for a given JS/config state,
       # so we cache it and skip prebuild entirely on a hit.
