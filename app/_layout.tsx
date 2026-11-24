@@ -6,6 +6,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as Notifications from 'expo-notifications';
 import { useSetAtomCompat } from '@/hooks/useStudioBridge';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -17,6 +18,16 @@ Notifications.setNotificationHandler({
   } as never),
 });
 
+/** Must live *inside* QueryClientProvider — hooks that read the client cannot run above it. */
+function Bootstrap() {
+  const hydrate = useSetAtomCompat();
+  useEffect(() => {
+    void hydrate();
+    void Notifications.requestPermissionsAsync().catch(() => null);
+  }, [hydrate]);
+  return null;
+}
+
 export default function RootLayout() {
   const [queryClient] = useState(() => new QueryClient({
     defaultOptions: {
@@ -24,19 +35,16 @@ export default function RootLayout() {
       mutations: { retry: 0 },
     },
   }));
-  const hydrate = useSetAtomCompat();
-
-  useEffect(() => {
-    void hydrate();
-    void Notifications.requestPermissionsAsync().catch(() => null);
-  }, [hydrate]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
-          <StatusBar style="light" />
-          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#08080d' } }} />
+          <ErrorBoundary>
+            <Bootstrap />
+            <StatusBar style="light" />
+            <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#08080d' } }} />
+          </ErrorBoundary>
         </QueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
