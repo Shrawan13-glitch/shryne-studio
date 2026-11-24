@@ -27,6 +27,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import java.security.MessageDigest
 import java.util.UUID
 
 private const val REPO_NAME = "shryne-studio-audio"
@@ -51,8 +52,18 @@ class StudioViewModel(app: Application) : AndroidViewModel(app) {
     val assets = mutableStateListOf<Asset>()
 
     init {
-        if (connected.value) loadLocal()
+        if (connected.value) {
+            loadLocal()
+            // Propagate workflow changes shipped in a new APK without requiring reconnect.
+            if (tokens.workflowHash != hash(embeddedYaml())) repairWorkflow()
+        }
     }
+
+    private fun embeddedYaml(): String = getApplication<Application>().resources
+        .openRawResource(R.raw.tts_studio).bufferedReader().use { it.readText() }
+
+    private fun hash(value: String): String = MessageDigest.getInstance("SHA-256")
+        .digest(value.toByteArray()).joinToString("") { "%02x".format(it) }
 
     private fun client(): GithubClient = GithubClient(tokens.token ?: error("Not connected"))
 
@@ -94,8 +105,7 @@ class StudioViewModel(app: Application) : AndroidViewModel(app) {
                     defaultBranch = created.optString("default_branch", "main")
                 }
                 status.value = "Installing workflow"
-                val yaml = getApplication<Application>().resources.openRawResource(R.raw.tts_studio)
-                    .bufferedReader().use { it.readText() }
+                val yaml = embeddedYaml()
                 var sha: String? = null
                 try {
                     val existing = JSONObject(api.get("/repos/$who/$REPO_NAME/contents/$WORKFLOW_PATH?ref=$defaultBranch"))
@@ -115,6 +125,7 @@ class StudioViewModel(app: Application) : AndroidViewModel(app) {
                 tokens.login = who
                 tokens.repo = "$who/$REPO_NAME"
                 tokens.branch = defaultBranch
+                tokens.workflowHash = hash(yaml)
                 withContext(Dispatchers.Main) {
                     token.value = value.trim()
                     login.value = who
@@ -124,6 +135,38 @@ class StudioViewModel(app: Application) : AndroidViewModel(app) {
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) { error.value = e.message ?: "Could not connect" }
+            } finally {
+                withContext(Dispatchers.Main) { busy.value = false; status.value = null }
+            }
+        }
+    }
+
+    /** Idempotently re-writes the bundled workflow into the user's public repo. */
+    fun repairWorkflow() {
+        if (!connected.value) return
+        busy.value = true
+        status.value = "Updating workflow"
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val api = client()
+                val yaml = embeddedYaml()
+                val branch = tokens.branch ?: "main"
+                var sha: String? = null
+                try {
+                    val existing = JSONObject(api.get("/repos/${tokens.repo}/contents/$WORKFLOW_PATH?ref=$branch"))
+                    sha = existing.optString("sha")
+                } catch (e: GithubException) {
+                    if (e.status != 404) throw e
+                }
+                api.put("/repos/${tokens.repo}/contents/$WORKFLOW_PATH", JSONObject().apply {
+                    put("message", "chore: update Shryne Studio workflow")
+                    put("content", Base64.encodeToString(yaml.toByteArray(), Base64.DEFAULT))
+                    put("branch", branch)
+                    if (sha != null) put("sha", sha)
+                }.toString())
+                tokens.workflowHash = hash(yaml)
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) { error.value = e.message ?: "Could not update workflow" }
             } finally {
                 withContext(Dispatchers.Main) { busy.value = false; status.value = null }
             }

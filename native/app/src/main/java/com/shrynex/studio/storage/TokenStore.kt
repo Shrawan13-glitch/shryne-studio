@@ -29,5 +29,9 @@ class TokenStore(context: Context) {
         get() = prefs.getString("branch", null)
         set(value) = prefs.edit().putString("branch", value).apply()
 
+    var workflowHash: String?
+        get() = prefs.getString("workflow_hash", null)
+        set(value) = prefs.edit().putString("workflow_hash", value).apply()
+
     fun clear() = prefs.edit().clear().apply()
 }

@@ -364,6 +364,8 @@ private fun SettingsScreen(vm: StudioViewModel) {
         Text("Account: ${vm.login.value}")
         Text("Repo: ${vm.repo.value}", fontSize = 12.sp)
         Spacer(Modifier.height(20.dp))
+        Button(onClick = { vm.repairWorkflow() }, modifier = Modifier.fillMaxWidth()) { Text("Repair workflow") }
+        Spacer(Modifier.height(10.dp))
         Button(onClick = { vm.disconnect() }, modifier = Modifier.fillMaxWidth()) { Text("Disconnect") }
     }
 }
