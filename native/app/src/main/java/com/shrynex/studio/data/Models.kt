@@ -5,12 +5,12 @@ import java.util.UUID
 data class Block(
     val id: String = UUID.randomUUID().toString(),
     val type: String = "line",
-    val text: String = "",
-    val voice: String? = null,
-    val speed: Double = 1.0,
-    val filename: String? = null,
-    val enabled: Boolean = true,
-    val duration: Double = 0.5,
+    var text: String = "",
+    var voice: String? = null,
+    var speed: Double = 1.0,
+    var filename: String? = null,
+    var enabled: Boolean = true,
+    var duration: Double = 0.5,
 )
 
 data class Script(
