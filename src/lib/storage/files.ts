@@ -6,10 +6,13 @@ import { uid } from '@/lib/utils/id';
 
 // expo-file-system v19 (SDK 54+) uses the new File/Directory API. The legacy
 // documentDirectory + EncodingType constants no longer exist.
-export const OUTPUT_ROOT = `${FileSystem.Paths.document.uri}audio/`;
+// Computed on demand so importing this module never touches the native filesystem.
+export function outputRoot(): string {
+  return `${FileSystem.Paths.document.uri}audio/`;
+}
 
 export async function ensureOutputDir(): Promise<void> {
-  const directory = new FileSystem.Directory(OUTPUT_ROOT);
+  const directory = new FileSystem.Directory(outputRoot());
   if (!directory.exists) directory.create({ intermediates: true });
 }
 
@@ -31,7 +34,7 @@ export async function unzipToFiles(zip: Uint8Array, prefix: string): Promise<Arr
     if (bytes.length === 0) continue;
     const filename = path.split('/').pop();
     if (!filename || !filename.toLowerCase().endsWith('.wav')) continue;
-    const uri = `${OUTPUT_ROOT}${prefix}-${uid('a')}-${filename}`;
+    const uri = `${outputRoot()}${prefix}-${uid('a')}-${filename}`;
     await writeBytes(uri, bytes);
     written.push({ filename, uri, bytes });
   }
@@ -86,7 +89,7 @@ export async function exportMergedWav(assets: AudioAsset[], silences: SilenceMar
   }
   const merged = joinWavs(wavs, silences);
   await ensureOutputDir();
-  const uri = `${OUTPUT_ROOT}${uid('mix')}-${targetName.replace(/[^\w.-]/g, '_')}.wav`;
+  const uri = `${outputRoot()}${uid('mix')}-${targetName.replace(/[^\w.-]/g, '_')}.wav`;
   await writeBytes(uri, merged);
   return uri;
 }
@@ -102,7 +105,7 @@ export async function exportZip(assets: AudioAsset[], zipName: string): Promise<
   })), null, 2));
   const zipped = zipSync(files, { level: 1 });
   await ensureOutputDir();
-  const uri = `${OUTPUT_ROOT}${zipName.replace(/[^\w.-]/g, '_')}.zip`;
+  const uri = `${outputRoot()}${zipName.replace(/[^\w.-]/g, '_')}.zip`;
   await writeBytes(uri, zipped);
   return uri;
 }
