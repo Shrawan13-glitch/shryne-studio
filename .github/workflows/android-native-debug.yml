@@ -35,7 +35,6 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           cache-disabled: false
-          build-root-directory: native
 
       # Keep task outputs between runs so unchanged modules are UP-TO-DATE.
       - name: Restore project build outputs
