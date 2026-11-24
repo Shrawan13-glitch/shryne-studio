@@ -52,7 +52,7 @@ concurrency:
 
 env:
   MODEL_CACHE_KEY: kokoro-models-v1
-  PIP_CACHE_KEY: ${{ runner.os }}-pip-kokoro-0.5.0-soundfile-v1
+  PIP_CACHE_KEY: linux-pip-kokoro-0.5.0-soundfile-v1
   MAX_CACHES: '12'
 
 jobs:
